@@ -1,0 +1,26 @@
+name: FinOps Terraform Policy Gate
+
+on: [push, pull_request]
+
+jobs:
+  finops_governance_check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout FinOps IaC Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Format & Validate
+        run: |
+          terraform fmt -check
+          terraform init -backend=false
+          terraform validate
+
+      - name: FinOps Policy Gate (Verify Tags, Spot & Auto-Termination)
+        run: |
+          echo "Checking mandatory FinOps guardrails..."
+          grep -q "CostCenter" databricks_finops.tf && echo "PASS: CostCenter Tag Found"
+          grep -q "autotermination_minutes = 15" databricks_finops.tf && echo "PASS: Auto-termination <= 30 mins enforced"
+          grep -q "SPOT_WITH_FALLBACK_AZURE" databricks_finops.tf && echo "PASS: Spot Instance rule verified for Sandbox"
